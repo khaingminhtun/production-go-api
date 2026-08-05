@@ -1,0 +1,24 @@
+# Binaries
+*.exe
+*.out
+/bin
+
+# Environment
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Test output
+coverage.out
+
+# OS
+.DS_Store
+
+# Air
+tmp/
