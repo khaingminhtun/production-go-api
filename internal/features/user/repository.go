@@ -26,7 +26,7 @@ func NewRepository(db *gorm.DB) Repository {
 	}
 }
 
-func (r repository) Create(ctx context.Context, user *User) error {
+func (r *repository) Create(ctx context.Context, user *User) error {
 	//TODO implement me
 	return r.db.WithContext(ctx).Create(user).Error
 }
