@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	// Application/domain errors.
 	ErrUserNotFound     = errors.New("user not found")
 	ErrEmailAlreadyUsed = errors.New("email already in use")
 )
@@ -56,7 +57,14 @@ func NewService(repo Repository) Service {
 	}
 }
 
-func (s *service) GetMe(ctx context.Context, userID uint) (*UserResponse, error) {
+// ============================================================
+// Normal Authenticated User
+// ============================================================
+
+func (s *service) GetMe(
+	ctx context.Context,
+	userID uint,
+) (*UserResponse, error) {
 
 	user, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
@@ -75,6 +83,7 @@ func (s *service) UpdateEmail(
 	userID uint,
 	req UpdateEmailRequest,
 ) (*UserResponse, error) {
+
 	user, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -91,7 +100,7 @@ func (s *service) UpdateEmail(
 		return toUserResponse(user), nil
 	}
 
-	// Email must be unique.
+	// Application-level uniqueness check.
 	existing, err := s.repo.GetByEmail(ctx, email)
 
 	if err == nil && existing.ID != user.ID {
@@ -111,11 +120,15 @@ func (s *service) UpdateEmail(
 	return toUserResponse(user), nil
 }
 
-// admin task
+// ============================================================
+// Admin
+// ============================================================
+
 func (s *service) ListUsers(
 	ctx context.Context,
 	offset, limit int,
 ) (*UserListResponse, error) {
+
 	if offset < 0 {
 		offset = 0
 	}
@@ -154,6 +167,7 @@ func (s *service) GetUser(
 	ctx context.Context,
 	id uint,
 ) (*AdminUserResponse, error) {
+
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -171,6 +185,7 @@ func (s *service) UpdateUser(
 	id uint,
 	req AdminUpdateUserRequest,
 ) (*AdminUserResponse, error) {
+
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -182,7 +197,7 @@ func (s *service) UpdateUser(
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
-	// Check email uniqueness only if it changed.
+	// Check email uniqueness only if the email changed.
 	if email != user.Email {
 		existing, err := s.repo.GetByEmail(ctx, email)
 
@@ -193,9 +208,9 @@ func (s *service) UpdateUser(
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
-	}
 
-	user.Email = email
+		user.Email = email
+	}
 
 	if req.Role != "" {
 		user.Role = req.Role
@@ -216,6 +231,7 @@ func (s *service) DeleteUser(
 	ctx context.Context,
 	id uint,
 ) error {
+
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

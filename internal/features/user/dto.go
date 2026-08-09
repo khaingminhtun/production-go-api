@@ -11,7 +11,7 @@ type UpdateEmailRequest struct {
 // AdminUpdateUserRequest is used by an admin
 // to manage another user's account.
 type AdminUpdateUserRequest struct {
-	Email  string `json:"email" binding:"required,email,max=255"`
+	Email  string `json:"email" binding:"omitempty,email,max=255"`
 	Role   string `json:"role" binding:"omitempty,oneof=user admin"`
 	Status string `json:"status" binding:"omitempty,oneof=active inactive suspended"`
 }
