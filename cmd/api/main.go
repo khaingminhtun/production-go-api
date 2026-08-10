@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/khaingminhtun/production-go-api/internal/app"
 	"github.com/khaingminhtun/production-go-api/internal/config"
 	"github.com/khaingminhtun/production-go-api/internal/infrastructure/database"
 
-	"github.com/khaingminhtun/production-go-api/internal/router"
 	"github.com/khaingminhtun/production-go-api/internal/shared/logger"
 	"github.com/rs/zerolog/log"
 )
@@ -16,7 +16,6 @@ func main() {
 	logger.Init(cfg.Loglevel)
 
 	db, err := database.NewGorm(cfg.DB)
-
 	if err != nil {
 
 		log.Fatal().
@@ -25,9 +24,7 @@ func main() {
 	}
 
 	sqlDB, err := db.DB()
-
 	if err != nil {
-
 		log.Fatal().
 			Err(err).
 			Msg("failed to get sql database")
@@ -35,10 +32,15 @@ func main() {
 
 	defer sqlDB.Close()
 
-	r := router.New()
+	//dependency injection
+	deps := app.NewDependencies(db)
+
+	//Router
+	r := app.NewRouter(deps)
+
+	//Start server
 
 	if err := r.Run(cfg.ServerPort); err != nil {
-
 		log.Fatal().
 			Err(err).
 			Msg("server failed")
