@@ -2,70 +2,48 @@ package user
 
 import "time"
 
-// UpdateEmailRequest is used by an authenticated user
-// to update their account email.
-type UpdateEmailRequest struct {
-	Email string `json:"email" binding:"required,email,max=255"`
+// CreateUserRequest is used to create a new user account.
+type CreateUserRequest struct {
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Username string `json:"username" binding:"required,min=3,max=100"`
+	Password string `json:"password" binding:"required,min=8"`
 }
 
-// AdminUpdateUserRequest is used by an admin
-// to manage another user's account.
-type AdminUpdateUserRequest struct {
-	Email  string `json:"email" binding:"omitempty,email,max=255"`
-	Role   string `json:"role" binding:"omitempty,oneof=user admin"`
-	Status string `json:"status" binding:"omitempty,oneof=active inactive suspended"`
+// UpdateUserRequest is used to update the authenticated user's account.
+type UpdateUserRequest struct {
+	Username string `json:"username" binding:"omitempty,min=3,max=100"`
+	Email    string `json:"email" binding:"omitempty,email,max=255"`
 }
 
-// UserResponse is the normal public representation
-// of a user account.
+// UserResponse is the public representation of a user.
 type UserResponse struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-}
-
-// AdminUserResponse contains account information
-// visible to administrators.
-type AdminUserResponse struct {
 	ID            uint       `json:"id"`
 	Username      string     `json:"username"`
 	Email         string     `json:"email"`
 	Role          string     `json:"role"`
 	Status        string     `json:"status"`
 	EmailVerified bool       `json:"email_verified"`
-	LastLoginAt   *time.Time `json:"last_login_at"`
+	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-// UserListResponse is the paginated user list
-// returned to administrators.
+// UserListResponse is used when returning multiple users.
 type UserListResponse struct {
-	Users  []AdminUserResponse `json:"users"`
-	Total  int64               `json:"total"`
-	Offset int                 `json:"offset"`
-	Limit  int                 `json:"limit"`
+	Users  []UserResponse `json:"users"`
+	Total  int64          `json:"total"`
+	Offset int            `json:"offset"`
+	Limit  int            `json:"limit"`
 }
 
 // Model -> DTO
+
 func toUserResponse(user *User) *UserResponse {
 	if user == nil {
 		return nil
 	}
 
 	return &UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-	}
-}
-
-func toAdminUserResponse(user *User) *AdminUserResponse {
-	if user == nil {
-		return nil
-	}
-
-	return &AdminUserResponse{
 		ID:            user.ID,
 		Username:      user.Username,
 		Email:         user.Email,
@@ -76,4 +54,14 @@ func toAdminUserResponse(user *User) *AdminUserResponse {
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 	}
+}
+
+func toUserResponseList(users []User) []UserResponse {
+	result := make([]UserResponse, 0, len(users))
+
+	for i := range users {
+		result = append(result, *toUserResponse(&users[i]))
+	}
+
+	return result
 }

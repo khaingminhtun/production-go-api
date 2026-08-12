@@ -2,26 +2,17 @@ package user
 
 import "github.com/gin-gonic/gin"
 
-// RegisterRoutes registers all user module routes
+// RegisterRoutes registers all user module routes.
 func RegisterRoutes(
 	router *gin.RouterGroup,
 	handler *Handler,
-
 ) {
-
-	// Authenticate user
-	me := router.Group("/me")
+	users := router.Group("/users")
 	{
-		me.GET("", handler.GetMe)
-		me.PATCH("/email", handler.UpdateEmail)
-	}
-
-	// Admin
-	admin := router.Group("/admin/users")
-	{
-		admin.GET("", handler.ListUsers)
-		admin.GET("/:id", handler.GetUser)
-		admin.PATCH("/:id", handler.UpdateUser)
-		admin.DELETE("/:id", handler.DeleteUser)
+		users.POST("", handler.CreateUser)
+		users.GET("", handler.ListUsers)
+		users.GET("/:id", handler.GetUser)
+		users.PATCH("/:id", handler.UpdateUser)
+		users.DELETE("/:id", handler.DeleteUser)
 	}
 }

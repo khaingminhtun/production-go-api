@@ -1,11 +1,8 @@
 package user
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
-	"github.com/khaingminhtun/production-go-api/internal/shared/authctx"
 	"github.com/khaingminhtun/production-go-api/internal/shared/httpx"
 	"github.com/khaingminhtun/production-go-api/internal/shared/response"
 )
@@ -21,59 +18,56 @@ func NewHandler(service Service) *Handler {
 }
 
 // ============================================================
-// Normal Authenticated User
+// Create
 // ============================================================
 
-// GetMe handles:
+// CreateUser handles:
 //
-// GET /me
+// POST /users
 //
-// Returns the currently authenticated user's public information.
-func (h *Handler) GetMe(c *gin.Context) {
-	userID, err := authctx.GetUserID(c)
-	if err != nil {
-		response.Unauthorized(c, "authentication required")
-		return
-	}
-
-	result, err := h.service.GetMe(
-		c.Request.Context(),
-		userID,
-	)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
-
-	response.OK(c, result)
-}
-
-// UpdateEmail handles:
-//
-// PATCH /me/email
-//
-// Allows the authenticated user to change their email.
-func (h *Handler) UpdateEmail(c *gin.Context) {
-	userID, err := authctx.GetUserID(c)
-	if err != nil {
-		response.Unauthorized(c, "authentication required")
-		return
-	}
-
-	var req UpdateEmailRequest
+// Creates a new user.
+func (h *Handler) CreateUser(c *gin.Context) {
+	var req CreateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request body")
 		return
 	}
 
-	result, err := h.service.UpdateEmail(
+	result, err := h.service.CreateUser(
 		c.Request.Context(),
-		userID,
 		req,
 	)
 	if err != nil {
-		handleError(c, err)
+		c.Error(err)
+		return
+	}
+
+	response.Created(c, result)
+}
+
+// ============================================================
+// Get
+// ============================================================
+
+// GetUser handles:
+//
+// GET /users/:id
+//
+// Returns a user by ID.
+func (h *Handler) GetUser(c *gin.Context) {
+	userID, err := httpx.ParamUint(c, "id")
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	result, err := h.service.GetUser(
+		c.Request.Context(),
+		userID,
+	)
+	if err != nil {
+		c.Error(err)
 		return
 	}
 
@@ -81,12 +75,12 @@ func (h *Handler) UpdateEmail(c *gin.Context) {
 }
 
 // ============================================================
-// Admin
+// List
 // ============================================================
 
 // ListUsers handles:
 //
-// GET /admin/users?offset=0&limit=20
+// GET /users?offset=0&limit=20
 //
 // Returns a paginated list of users.
 func (h *Handler) ListUsers(c *gin.Context) {
@@ -108,42 +102,22 @@ func (h *Handler) ListUsers(c *gin.Context) {
 		limit,
 	)
 	if err != nil {
-		handleError(c, err)
+		c.Error(err)
 		return
 	}
 
 	response.OK(c, result)
 }
 
-// GetUser handles:
-//
-// GET /admin/users/:id
-//
-// Returns account information for a specific user.
-func (h *Handler) GetUser(c *gin.Context) {
-	userID, err := httpx.ParamUint(c, "id")
-	if err != nil {
-		response.BadRequest(c, "invalid user id")
-		return
-	}
-
-	result, err := h.service.GetUser(
-		c.Request.Context(),
-		userID,
-	)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
-
-	response.OK(c, result)
-}
+// ============================================================
+// Update
+// ============================================================
 
 // UpdateUser handles:
 //
-// PATCH /admin/users/:id
+// PATCH /users/:id
 //
-// Allows an admin to manage another user's account.
+// Updates a user.
 func (h *Handler) UpdateUser(c *gin.Context) {
 	userID, err := httpx.ParamUint(c, "id")
 	if err != nil {
@@ -151,7 +125,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	var req AdminUpdateUserRequest
+	var req UpdateUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "invalid request body")
@@ -164,18 +138,22 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		req,
 	)
 	if err != nil {
-		handleError(c, err)
+		c.Error(err)
 		return
 	}
 
 	response.OK(c, result)
 }
 
+// ============================================================
+// Delete
+// ============================================================
+
 // DeleteUser handles:
 //
-// DELETE /admin/users/:id
+// DELETE /users/:id
 //
-// Soft-deletes a user account.
+// Deletes a user.
 func (h *Handler) DeleteUser(c *gin.Context) {
 	userID, err := httpx.ParamUint(c, "id")
 	if err != nil {
@@ -187,34 +165,9 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		c.Request.Context(),
 		userID,
 	); err != nil {
-		handleError(c, err)
+		c.Error(err)
 		return
 	}
 
 	response.NoContent(c)
-}
-
-// ============================================================
-// User Error Mapping
-// ============================================================
-
-func handleError(c *gin.Context, err error) {
-	switch {
-	case errors.Is(err, ErrUserNotFound):
-		response.NotFound(
-			c,
-			"USER_NOT_FOUND",
-			"user not found",
-		)
-
-	case errors.Is(err, ErrEmailAlreadyUsed):
-		response.Conflict(
-			c,
-			"EMAIL_ALREADY_USED",
-			"email is already in use",
-		)
-
-	default:
-		response.InternalServerError(c)
-	}
 }

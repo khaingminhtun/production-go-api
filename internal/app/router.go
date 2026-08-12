@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/khaingminhtun/production-go-api/internal/features/user"
+	"github.com/khaingminhtun/production-go-api/internal/shared/middleware"
 )
 
 func NewRouter(deps *Dependencies) *gin.Engine {
@@ -11,6 +12,7 @@ func NewRouter(deps *Dependencies) *gin.Engine {
 	//Gin middlware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(middleware.ErrorHandler())
 
 	//API v1
 	api := router.Group("/api/v1")
@@ -19,7 +21,7 @@ func NewRouter(deps *Dependencies) *gin.Engine {
 	user.RegisterRoutes(
 		api,
 		deps.UserHandler,
-		)
+	)
 
 	return router
 }

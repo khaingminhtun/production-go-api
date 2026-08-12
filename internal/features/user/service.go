@@ -5,41 +5,32 @@ import (
 	"errors"
 	"strings"
 
+	postgres "github.com/khaingminhtun/production-go-api/internal/shared/dbutils"
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/apperror"
 	"gorm.io/gorm"
 )
 
-var (
-	// Application/domain errors.
-	ErrUserNotFound     = errors.New("user not found")
-	ErrEmailAlreadyUsed = errors.New("email already in use")
-)
-
 type Service interface {
-	// Normal authenticated user.
-	GetMe(ctx context.Context, userID uint) (*UserResponse, error)
-
-	UpdateEmail(
+	CreateUser(
 		ctx context.Context,
-		userID uint,
-		req UpdateEmailRequest,
+		req CreateUserRequest,
 	) (*UserResponse, error)
 
-	// Admin.
+	GetUser(
+		ctx context.Context,
+		id uint,
+	) (*UserResponse, error)
+
 	ListUsers(
 		ctx context.Context,
 		offset, limit int,
 	) (*UserListResponse, error)
 
-	GetUser(
-		ctx context.Context,
-		id uint,
-	) (*AdminUserResponse, error)
-
 	UpdateUser(
 		ctx context.Context,
 		id uint,
-		req AdminUpdateUserRequest,
-	) (*AdminUserResponse, error)
+		req UpdateUserRequest,
+	) (*UserResponse, error)
 
 	DeleteUser(
 		ctx context.Context,
@@ -58,62 +49,59 @@ func NewService(repo Repository) Service {
 }
 
 // ============================================================
-// Normal Authenticated User
+// Create
 // ============================================================
 
-func (s *service) GetMe(
+func (s *service) CreateUser(
 	ctx context.Context,
-	userID uint,
+	req CreateUserRequest,
 ) (*UserResponse, error) {
-
-	user, err := s.repo.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
-
-	return toUserResponse(user), nil
-}
-
-func (s *service) UpdateEmail(
-	ctx context.Context,
-	userID uint,
-	req UpdateEmailRequest,
-) (*UserResponse, error) {
-
-	user, err := s.repo.GetByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
+	username := strings.TrimSpace(req.Username)
 
-	// Nothing changed.
-	if email == user.Email {
-		return toUserResponse(user), nil
+	// Application-level check.
+	_, err := s.repo.GetByEmail(ctx, email)
+
+	if err == nil {
+		return nil, apperror.New(
+			apperror.CodeUserAlreadyExists,
+			"user with this email already exists",
+			nil,
+		)
 	}
 
-	// Application-level uniqueness check.
-	existing, err := s.repo.GetByEmail(ctx, email)
-
-	if err == nil && existing.ID != user.ID {
-		return nil, ErrEmailAlreadyUsed
-	}
-
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	user.Email = email
+	//passwordHash, err := password.Hash(req.Password)
+	//if err != nil {
+	//	return nil, fmt.Errorf("hash password: %w", err)
+	//}
 
-	if err := s.repo.Update(ctx, user); err != nil {
+	user := &User{
+		Email:         email,
+		Username:      username,
+		PasswordHash:  req.Password,
+		Role:          "user",
+		Status:        "active",
+		EmailVerified: false,
+	}
+
+	if err := s.repo.Create(ctx, user); err != nil {
+
+		// PostgreSQL unique constraint is the final authority.
+		if postgres.IsUniqueViolation(err) &&
+			postgres.ConstraintName(err) == "users_email_key" {
+
+			return nil, apperror.New(
+				apperror.CodeUserAlreadyExists,
+				"user with this email already exists",
+				err,
+			)
+		}
+
 		return nil, err
 	}
 
@@ -121,7 +109,28 @@ func (s *service) UpdateEmail(
 }
 
 // ============================================================
-// Admin
+// Get
+// ============================================================
+
+func (s *service) GetUser(
+	ctx context.Context,
+	id uint,
+) (*UserResponse, error) {
+
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, userNotFoundError(err)
+		}
+
+		return nil, err
+	}
+
+	return toUserResponse(user), nil
+}
+
+// ============================================================
+// List
 // ============================================================
 
 func (s *service) ListUsers(
@@ -141,91 +150,73 @@ func (s *service) ListUsers(
 		limit = 100
 	}
 
-	users, total, err := s.repo.List(ctx, offset, limit)
+	users, total, err := s.repo.List(
+		ctx,
+		offset,
+		limit,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]AdminUserResponse, 0, len(users))
-
-	for i := range users {
-		result = append(
-			result,
-			*toAdminUserResponse(&users[i]),
-		)
-	}
-
 	return &UserListResponse{
-		Users:  result,
+		Users:  toUserResponseList(users),
 		Total:  total,
 		Offset: offset,
 		Limit:  limit,
 	}, nil
 }
 
-func (s *service) GetUser(
-	ctx context.Context,
-	id uint,
-) (*AdminUserResponse, error) {
-
-	user, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-
-		return nil, err
-	}
-
-	return toAdminUserResponse(user), nil
-}
+// ============================================================
+// Update
+// ============================================================
 
 func (s *service) UpdateUser(
 	ctx context.Context,
 	id uint,
-	req AdminUpdateUserRequest,
-) (*AdminUserResponse, error) {
+	req UpdateUserRequest,
+) (*UserResponse, error) {
 
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, userNotFoundError(err)
 		}
 
 		return nil, err
 	}
 
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-
-	// Check email uniqueness only if the email changed.
-	if email != user.Email {
-		existing, err := s.repo.GetByEmail(ctx, email)
-
-		if err == nil && existing.ID != user.ID {
-			return nil, ErrEmailAlreadyUsed
-		}
-
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
-
-		user.Email = email
+	if req.Email != "" {
+		user.Email = strings.ToLower(
+			strings.TrimSpace(req.Email),
+		)
 	}
 
-	if req.Role != "" {
-		user.Role = req.Role
-	}
-
-	if req.Status != "" {
-		user.Status = req.Status
+	if req.Username != "" {
+		user.Username = strings.TrimSpace(req.Username)
 	}
 
 	if err := s.repo.Update(ctx, user); err != nil {
+
+		if postgres.IsUniqueViolation(err) &&
+			postgres.ConstraintName(err) == "users_email_key" {
+
+			return nil, apperror.New(
+				apperror.CodeUserAlreadyExists,
+				"user with this email already exists",
+				err,
+			)
+		}
+
 		return nil, err
 	}
 
-	return toAdminUserResponse(user), nil
+	return toUserResponse(user), nil
 }
+
+// ============================================================
+// Delete
+// ============================================================
 
 func (s *service) DeleteUser(
 	ctx context.Context,
@@ -235,11 +226,27 @@ func (s *service) DeleteUser(
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
+			return userNotFoundError(err)
 		}
 
 		return err
 	}
 
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ============================================================
+// Error Helpers
+// ============================================================
+
+func userNotFoundError(err error) error {
+	return apperror.New(
+		apperror.CodeUserNotFound,
+		"user not found",
+		err,
+	)
 }
