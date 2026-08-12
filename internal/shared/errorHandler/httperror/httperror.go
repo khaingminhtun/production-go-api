@@ -4,8 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"gorm.io/gorm"
-
 	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/apperror"
 )
 
@@ -27,7 +25,7 @@ func New(status int, code, message string, err error) *Error {
 
 func (e *Error) Error() string {
 	if e.Err != nil {
-		return e.Err.Error()
+		return e.Message + ": " + e.Err.Error() // Improved string tracking
 	}
 
 	return e.Message
@@ -54,17 +52,7 @@ func FromError(err error) *Error {
 		return fromAppError(appErr)
 	}
 
-	// GORM "not found".
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return New(
-			http.StatusNotFound,
-			"NOT_FOUND",
-			"resource not found",
-			err,
-		)
-	}
-
-	// Unknown error.
+	// Unknown/System error (Database crashes, network connection loss, etc.)
 	return New(
 		http.StatusInternalServerError,
 		"INTERNAL_SERVER_ERROR",
@@ -73,58 +61,19 @@ func FromError(err error) *Error {
 	)
 }
 
+// Clean static lookup map to replace the bulky switch block
+var codeToStatus = map[apperror.Code]int{
+	apperror.CodeUserNotFound:       http.StatusNotFound,
+	apperror.CodeUserAlreadyExists:  http.StatusConflict,
+	apperror.CodeInvalidCredentials: http.StatusUnauthorized,
+	apperror.CodeEmailNotVerified:   http.StatusForbidden,
+	apperror.CodeInvalidVerifyCode:  http.StatusBadRequest,
+	apperror.CodeVerifyCodeExpired:  http.StatusBadRequest,
+}
+
 func fromAppError(err *apperror.Error) *Error {
-	switch err.Code {
-
-	case apperror.CodeUserNotFound:
-		return New(
-			http.StatusNotFound,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	case apperror.CodeUserAlreadyExists:
-		return New(
-			http.StatusConflict,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	case apperror.CodeInvalidCredentials:
-		return New(
-			http.StatusUnauthorized,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	case apperror.CodeEmailNotVerified:
-		return New(
-			http.StatusForbidden,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	case apperror.CodeInvalidVerifyCode:
-		return New(
-			http.StatusBadRequest,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	case apperror.CodeVerifyCodeExpired:
-		return New(
-			http.StatusBadRequest,
-			string(err.Code),
-			err.Message,
-			err,
-		)
-
-	default:
+	status, exists := codeToStatus[err.Code]
+	if !exists {
 		return New(
 			http.StatusInternalServerError,
 			"INTERNAL_SERVER_ERROR",
@@ -132,4 +81,6 @@ func fromAppError(err *apperror.Error) *Error {
 			err,
 		)
 	}
+
+	return New(status, string(err.Code), err.Message, err)
 }

@@ -2,12 +2,7 @@ package user
 
 import (
 	"context"
-	"errors"
 	"strings"
-
-	postgres "github.com/khaingminhtun/production-go-api/internal/shared/dbutils"
-	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/apperror"
-	"gorm.io/gorm"
 )
 
 type Service interface {
@@ -57,51 +52,17 @@ func (s *service) CreateUser(
 	req CreateUserRequest,
 ) (*UserResponse, error) {
 
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-	username := strings.TrimSpace(req.Username)
-
-	// Application-level check.
-	_, err := s.repo.GetByEmail(ctx, email)
-
-	if err == nil {
-		return nil, apperror.New(
-			apperror.CodeUserAlreadyExists,
-			"user with this email already exists",
-			nil,
-		)
-	}
-
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	//passwordHash, err := password.Hash(req.Password)
-	//if err != nil {
-	//	return nil, fmt.Errorf("hash password: %w", err)
-	//}
-
 	user := &User{
-		Email:         email,
-		Username:      username,
-		PasswordHash:  req.Password,
+		Email:         strings.ToLower(strings.TrimSpace(req.Email)),
+		Username:      strings.TrimSpace(req.Username),
+		PasswordHash:  req.Password, // Re-add password.Hash here later
 		Role:          "user",
 		Status:        "active",
 		EmailVerified: false,
 	}
 
+	// The repository checks unique index keys and flags errors
 	if err := s.repo.Create(ctx, user); err != nil {
-
-		// PostgreSQL unique constraint is the final authority.
-		if postgres.IsUniqueViolation(err) &&
-			postgres.ConstraintName(err) == "users_email_key" {
-
-			return nil, apperror.New(
-				apperror.CodeUserAlreadyExists,
-				"user with this email already exists",
-				err,
-			)
-		}
-
 		return nil, err
 	}
 
@@ -119,11 +80,7 @@ func (s *service) GetUser(
 
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, userNotFoundError(err)
-		}
-
-		return nil, err
+		return nil, err // Bubbles up configured apperror.CodeUserNotFound
 	}
 
 	return toUserResponse(user), nil
@@ -150,11 +107,7 @@ func (s *service) ListUsers(
 		limit = 100
 	}
 
-	users, total, err := s.repo.List(
-		ctx,
-		offset,
-		limit,
-	)
+	users, total, err := s.repo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -179,35 +132,19 @@ func (s *service) UpdateUser(
 
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, userNotFoundError(err)
-		}
-
-		return nil, err
+		return nil, err // Returns NotFound instantly if record is missing
 	}
 
 	if req.Email != "" {
-		user.Email = strings.ToLower(
-			strings.TrimSpace(req.Email),
-		)
+		user.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	}
 
 	if req.Username != "" {
 		user.Username = strings.TrimSpace(req.Username)
 	}
 
+	// Handles collisions via domain wrapper validations
 	if err := s.repo.Update(ctx, user); err != nil {
-
-		if postgres.IsUniqueViolation(err) &&
-			postgres.ConstraintName(err) == "users_email_key" {
-
-			return nil, apperror.New(
-				apperror.CodeUserAlreadyExists,
-				"user with this email already exists",
-				err,
-			)
-		}
-
 		return nil, err
 	}
 
@@ -223,30 +160,10 @@ func (s *service) DeleteUser(
 	id uint,
 ) error {
 
-	_, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return userNotFoundError(err)
-		}
-
+	// Confirms target existence first
+	if _, err := s.repo.GetByID(ctx, id); err != nil {
 		return err
 	}
 
-	if err := s.repo.Delete(ctx, id); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ============================================================
-// Error Helpers
-// ============================================================
-
-func userNotFoundError(err error) error {
-	return apperror.New(
-		apperror.CodeUserNotFound,
-		"user not found",
-		err,
-	)
+	return s.repo.Delete(ctx, id)
 }
