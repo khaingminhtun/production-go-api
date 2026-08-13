@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	postgres "github.com/khaingminhtun/production-go-api/internal/shared/dbutils"
-	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/apperror"
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
 	"gorm.io/gorm"
 )
 

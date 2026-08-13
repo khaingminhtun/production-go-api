@@ -35,8 +35,14 @@ func Created(c *gin.Context, data interface{}) {
 }
 
 // NoContent sends a 204 No Content response.
-func NoContent(c *gin.Context) {
-	c.Status(http.StatusNoContent)
+func NoContent(c *gin.Context, message string) {
+	c.JSON(http.StatusNoContent, Response{
+		Success: false,
+		Error: &ErrorInfo{
+			Code:    "UNAUTHORIZED",
+			Message: message,
+		},
+	})
 }
 
 // BadRequest sends a 400 Bad Request response.

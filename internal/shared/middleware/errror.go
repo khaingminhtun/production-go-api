@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 
-	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/httperror"
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/httperror"
 	"github.com/khaingminhtun/production-go-api/internal/shared/response"
 )
 

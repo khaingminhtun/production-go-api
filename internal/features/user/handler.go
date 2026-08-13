@@ -169,5 +169,5 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	response.NoContent(c)
+	response.NoContent(c, "user deleted")
 }

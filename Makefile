@@ -92,6 +92,42 @@ migrate-status:
 migrate-reset:
 	goose -dir migrations postgres "$(DB_URL)" reset
 
+
+# =========================
+# Redis
+# =========================
+
+redis-up:
+	docker compose up -d redis
+
+redis-down:
+	docker compose stop redis
+
+redis-restart:
+	docker compose restart redis
+
+redis-logs:
+	docker compose logs -f redis
+
+redis-status:
+	docker compose ps redis
+
+redis-cli:
+	docker exec -it production-redis redis-cli
+
+redis-ping:
+	docker exec production-redis redis-cli PING
+
+redis-flush:
+	docker exec production-redis redis-cli FLUSHDB
+
+redis-keys:
+	docker exec production-redis redis-cli KEYS '*'
+
+redis-info:
+	docker exec production-redis redis-cli INFO
+
+
 # -----------------------
 # Application
 # -----------------------

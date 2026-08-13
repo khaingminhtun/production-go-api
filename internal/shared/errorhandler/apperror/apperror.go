@@ -11,6 +11,8 @@ const (
 	CodeEmailNotVerified   Code = "EMAIL_NOT_VERIFIED"
 	CodeInvalidVerifyCode  Code = "INVALID_VERIFICATION_CODE"
 	CodeVerifyCodeExpired  Code = "VERIFICATION_CODE_EXPIRED"
+	CodeMethodNotAllowed   Code = "METHOD_NOT_ALLOWED"
+	CodeRouteNotFound      Code = "ROUTE_NOT_FOUND"
 )
 
 type Error struct {

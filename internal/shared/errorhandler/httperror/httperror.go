@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/khaingminhtun/production-go-api/internal/shared/errorHandler/apperror"
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
 )
 
 type Error struct {
@@ -69,6 +69,8 @@ var codeToStatus = map[apperror.Code]int{
 	apperror.CodeEmailNotVerified:   http.StatusForbidden,
 	apperror.CodeInvalidVerifyCode:  http.StatusBadRequest,
 	apperror.CodeVerifyCodeExpired:  http.StatusBadRequest,
+	apperror.CodeMethodNotAllowed:   http.StatusMethodNotAllowed,
+	apperror.CodeRouteNotFound:      http.StatusNotFound,
 }
 
 func fromAppError(err *apperror.Error) *Error {

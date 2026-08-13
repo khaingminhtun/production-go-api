@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Verify Your Email</title>
+
+    <style>
+        /* -----------------------------
+           Base
+        ----------------------------- */
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #eef2f7;
+            font-family:
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    Helvetica,
+                    Arial,
+                    sans-serif;
+            color: #172033;
+        }
+
+        table {
+            border-spacing: 0;
+        }
+
+        img {
+            border: 0;
+            display: block;
+            max-width: 100%;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        /* -----------------------------
+           Main Card
+        ----------------------------- */
+
+        .email-wrapper {
+            width: 100%;
+            padding: 50px 20px;
+            background:
+                    linear-gradient(
+                            135deg,
+                            #eef2ff 0%,
+                            #f8fafc 50%,
+                            #eef2ff 100%
+                    );
+        }
+
+        .email-container {
+            width: 100%;
+            max-width: 560px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow:
+                    0 20px 50px rgba(15, 23, 42, 0.10);
+        }
+
+        /* -----------------------------
+           Header
+        ----------------------------- */
+
+        .header {
+            padding: 36px 30px;
+            text-align: center;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            #111827 0%,
+                            #1e293b 55%,
+                            #312e81 100%
+                    );
+        }
+
+        .brand {
+            display: inline-block;
+            margin-bottom: 12px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header-title {
+            margin: 0;
+            color: #ffffff;
+            font-size: 28px;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .header-subtitle {
+            margin: 10px 0 0;
+            color: #cbd5e1;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* -----------------------------
+           Content
+        ----------------------------- */
+
+        .content {
+            padding: 42px 40px;
+        }
+
+        .title {
+            margin: 0 0 12px;
+            color: #111827;
+            font-size: 24px;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .description {
+            margin: 0;
+            color: #64748b;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* -----------------------------
+           OTP Card
+        ----------------------------- */
+
+        .otp-wrapper {
+            margin: 30px 0;
+            padding: 28px 20px;
+
+            text-align: center;
+
+            background:
+                    linear-gradient(
+                            135deg,
+                            #f8fafc,
+                            #eef2ff
+                    );
+
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+        }
+
+        .otp-label {
+            margin: 0 0 12px;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .otp {
+            margin: 0;
+            color: #111827;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 10px;
+        }
+
+        .otp-expire {
+            margin: 16px 0 0;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .otp-expire strong {
+            color: #4f46e5;
+        }
+
+        /* -----------------------------
+           Security Notice
+        ----------------------------- */
+
+        .security-box {
+            margin-top: 28px;
+            padding: 16px 18px;
+
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 12px;
+        }
+
+        .security-title {
+            margin: 0 0 6px;
+            color: #9a3412;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .security-text {
+            margin: 0;
+            color: #9a3412;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* -----------------------------
+           Footer
+        ----------------------------- */
+
+        .footer {
+            padding: 24px 30px;
+            text-align: center;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer-text {
+            margin: 0;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .footer-brand {
+            margin-bottom: 6px;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* -----------------------------
+           Mobile
+        ----------------------------- */
+
+        @media only screen and (max-width: 600px) {
+
+            .email-wrapper {
+                padding: 20px 10px;
+            }
+
+            .email-container {
+                border-radius: 14px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header-title {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 32px 24px;
+            }
+
+            .title {
+                font-size: 21px;
+            }
+
+            .otp {
+                font-size: 32px;
+                letter-spacing: 7px;
+            }
+
+            .footer {
+                padding: 22px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<table
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        role="presentation"
+>
+    <tr>
+        <td>
+
+            <div class="email-wrapper">
+
+                <table
+                        class="email-container"
+                        cellpadding="0"
+                        cellspacing="0"
+                        role="presentation"
+                >
+
+                    <!-- =========================
+                         HEADER
+                    ========================== -->
+
+                    <tr>
+                        <td class="header">
+
+                            <div class="brand">
+                                Production API
+                            </div>
+
+                            <h1 class="header-title">
+                                Welcome aboard
+                            </h1>
+
+                            <p class="header-subtitle">
+                                One more step to secure your account.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- =========================
+                         CONTENT
+                    ========================== -->
+
+                    <tr>
+                        <td class="content">
+
+                            <h2 class="title">
+                                Verify your email address
+                            </h2>
+
+                            <p class="description">
+                                Thanks for creating your account.
+                                To finish your registration, enter the
+                                verification code below.
+                            </p>
+
+                            <!-- OTP -->
+
+                            <div class="otp-wrapper">
+
+                                <p class="otp-label">
+                                    Verification Code
+                                </p>
+
+                                <p class="otp">
+                                    {{.OTP}}
+                                </p>
+
+                                <p class="otp-expire">
+                                    This code expires in
+                                    <strong>{{.ExpiresIn}}</strong>.
+                                </p>
+
+                            </div>
+
+                            <!-- Security Notice -->
+
+                            <div class="security-box">
+
+                                <p class="security-title">
+                                    Security notice
+                                </p>
+
+                                <p class="security-text">
+                                    Never share this verification code
+                                    with anyone. Our team will never ask
+                                    you for this code.
+                                </p>
+
+                            </div>
+
+                            <p
+                                    class="description"
+                                    style="margin-top: 24px;"
+                            >
+                                If you didn't create this account,
+                                you can safely ignore this email.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- =========================
+                         FOOTER
+                    ========================== -->
+
+                    <tr>
+                        <td class="footer">
+
+                            <p class="footer-brand">
+                                Production API
+                            </p>
+
+                            <p class="footer-text">
+                                This is an automated message.
+                                Please do not reply to this email.
+                            </p>
+
+                            <p
+                                    class="footer-text"
+                                    style="margin-top: 8px;"
+                            >
+                                © 2026 Production API. All rights reserved.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                </table>
+
+            </div>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
