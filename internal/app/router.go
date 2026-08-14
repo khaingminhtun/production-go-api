@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/khaingminhtun/production-go-api/internal/features/auth"
 	"github.com/khaingminhtun/production-go-api/internal/features/user"
 	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
 	"github.com/khaingminhtun/production-go-api/internal/shared/middleware"
@@ -44,6 +45,10 @@ func NewRouter(deps *Dependencies) *gin.Engine {
 		api,
 		deps.UserHandler,
 	)
+
+	auth.RegisterRoutes(
+		api,
+		deps.AuthHandler)
 
 	return router
 }

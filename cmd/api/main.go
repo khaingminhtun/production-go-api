@@ -48,6 +48,17 @@ func main() {
 
 	defer redisClient.Close()
 
+	//redis abstractions
+	redisStore := redisinfra.NewStore(redisClient)
+
+	emailQueue := redisinfra.NewEmailQueue(redisClient)
+
+	if err := emailQueue.EnsureConsumerGroup(ctx); err != nil {
+		log.Fatal().
+			Err(err).
+			Msg("email queue initialization failed")
+	}
+
 	//email sendgrid
 	emailSender := email.NewSendGridSender(
 		cfg.SendGrid.APIKey,
@@ -55,13 +66,20 @@ func main() {
 		cfg.SendGrid.FromName,
 	)
 
+	//Email Worker
+	emailWorker := email.New(
+		emailQueue,
+		emailSender)
 
+    go emailWorker.Start(ctx)
 
-	log.Info().
-		Msg("sending email")
 
 	//dependency injection
-	deps := app.NewDependencies(db)
+	deps := app.NewDependencies(
+		db,
+		redisStore,
+		emailQueue,
+		emailSender,)
 
 	//Router
 	r := app.NewRouter(deps)
