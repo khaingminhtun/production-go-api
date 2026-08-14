@@ -10,4 +10,6 @@ func RegisterRoutes(
 	auth := router.Group("/auth")
 
 	auth.POST("/register", handler.Register)
+
+	auth.POST("/register/verify", handler.VerifyRegister)
 }

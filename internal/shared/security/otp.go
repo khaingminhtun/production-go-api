@@ -3,6 +3,7 @@ package security
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -24,4 +25,15 @@ func HashOTP(otp string) string {
 	hash := sha256.Sum256([]byte(otp))
 
 	return hex.EncodeToString(hash[:])
+}
+
+func VerifyOTP(otp string, otpHash string) bool {
+	inputHash := HashOTP(otp)
+
+	if subtle.ConstantTimeCompare([]byte(inputHash), []byte(otpHash)) != 1 {
+		return false
+	}
+
+	return true
+
 }

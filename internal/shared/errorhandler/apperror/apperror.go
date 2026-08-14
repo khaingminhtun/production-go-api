@@ -13,6 +13,7 @@ const (
 	CodeVerifyCodeExpired  Code = "VERIFICATION_CODE_EXPIRED"
 	CodeMethodNotAllowed   Code = "METHOD_NOT_ALLOWED"
 	CodeRouteNotFound      Code = "ROUTE_NOT_FOUND"
+	CodeInvalidRequest  Code = "INVALID_REQUEST"
 )
 
 type Error struct {

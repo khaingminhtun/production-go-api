@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/khaingminhtun/production-go-api/internal/app"
 	"github.com/khaingminhtun/production-go-api/internal/config"
@@ -9,18 +14,26 @@ import (
 	redisinfra "github.com/khaingminhtun/production-go-api/internal/infrastructure/redis"
 	"github.com/khaingminhtun/production-go-api/internal/shared/email"
 	"github.com/khaingminhtun/production-go-api/internal/shared/logger"
+
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
 
+	// ============================================================
+	// Config
+	// ============================================================
+
 	cfg := config.Load()
 
 	logger.Init(cfg.Loglevel)
 
+	// ============================================================
+	// Database
+	// ============================================================
+
 	db, err := database.NewGorm(cfg.DB)
 	if err != nil {
-
 		log.Fatal().
 			Err(err).
 			Msg("database initialization failed")
@@ -33,9 +46,10 @@ func main() {
 			Msg("failed to get sql database")
 	}
 
-	defer sqlDB.Close()
+	// ============================================================
+	// Redis
+	// ============================================================
 
-	//redis
 	redisClient := redisinfra.NewClient(cfg.Redis)
 
 	ctx := context.Background()
@@ -46,9 +60,6 @@ func main() {
 			Msg("failed to connect to redis")
 	}
 
-	defer redisClient.Close()
-
-	//redis abstractions
 	redisStore := redisinfra.NewStore(redisClient)
 
 	emailQueue := redisinfra.NewEmailQueue(redisClient)
@@ -59,36 +70,139 @@ func main() {
 			Msg("email queue initialization failed")
 	}
 
-	//email sendgrid
+	// ============================================================
+	// Email
+	// ============================================================
+
 	emailSender := email.NewSendGridSender(
 		cfg.SendGrid.APIKey,
 		cfg.SendGrid.FromEmail,
 		cfg.SendGrid.FromName,
 	)
 
-	//Email Worker
+	// ============================================================
+	// Email Worker
+	// ============================================================
+
+	workerCtx, cancelWorker := context.WithCancel(
+		context.Background(),
+	)
+
 	emailWorker := email.New(
 		emailQueue,
-		emailSender)
+		emailSender,
+	)
 
-    go emailWorker.Start(ctx)
+	go emailWorker.Start(workerCtx)
 
+	log.Info().
+		Msg("email worker started")
 
-	//dependency injection
+	// ============================================================
+	// Dependency Injection
+	// ============================================================
+
 	deps := app.NewDependencies(
 		db,
 		redisStore,
 		emailQueue,
-		emailSender,)
+		emailSender,
+	)
 
-	//Router
+	// ============================================================
+	// Router
+	// ============================================================
+
 	r := app.NewRouter(deps)
 
-	//Start server
+	// ============================================================
+	// HTTP Server
+	// ============================================================
 
-	if err := r.Run(cfg.ServerPort); err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("server failed")
+	server := &http.Server{
+		Addr:    cfg.ServerPort,
+		Handler: r,
 	}
+
+	go func() {
+
+		log.Info().
+			Str("addr", cfg.ServerPort).
+			Msg("server started")
+
+		if err := server.ListenAndServe(); err != nil &&
+			err != http.ErrServerClosed {
+
+			log.Fatal().
+				Err(err).
+				Msg("server failed")
+		}
+	}()
+
+	// ============================================================
+	// Wait for Shutdown Signal
+	// ============================================================
+
+	shutdownSignalCtx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+
+	defer stop()
+
+	<-shutdownSignalCtx.Done()
+
+	log.Info().
+		Msg("shutdown signal received")
+
+	// ============================================================
+	// Graceful Shutdown
+	// ============================================================
+
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
+
+	defer cancel()
+
+	// Stop accepting new HTTP requests
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error().
+			Err(err).
+			Msg("http server shutdown failed")
+	} else {
+		log.Info().
+			Msg("http server stopped")
+	}
+
+	// Stop background worker
+	cancelWorker()
+
+	log.Info().
+		Msg("email worker stopped")
+
+	// Close PostgreSQL
+	if err := sqlDB.Close(); err != nil {
+		log.Error().
+			Err(err).
+			Msg("database close failed")
+	} else {
+		log.Info().
+			Msg("database connection closed")
+	}
+
+	// Close Redis
+	if err := redisClient.Close(); err != nil {
+		log.Error().
+			Err(err).
+			Msg("redis close failed")
+	} else {
+		log.Info().
+			Msg("redis connection closed")
+	}
+
+	log.Info().
+		Msg("application shutdown complete")
 }

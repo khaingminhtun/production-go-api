@@ -71,6 +71,7 @@ var codeToStatus = map[apperror.Code]int{
 	apperror.CodeVerifyCodeExpired:  http.StatusBadRequest,
 	apperror.CodeMethodNotAllowed:   http.StatusMethodNotAllowed,
 	apperror.CodeRouteNotFound:      http.StatusNotFound,
+	apperror.CodeInvalidRequest:     http.StatusBadRequest,
 }
 
 func fromAppError(err *apperror.Error) *Error {

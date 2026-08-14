@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -104,8 +105,9 @@ func (q *emailQueue) EnsureConsumerGroup(
 		return nil
 	}
 
-	if err.Error() ==
-		"BUSYGROUP Consumer Group name already exists" {
+	// Consumer group already exists.
+	// This is expected when the application restarts.
+	if strings.Contains(err.Error(), "BUSYGROUP") {
 		return nil
 	}
 

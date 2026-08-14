@@ -9,7 +9,8 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	Message string `json:"message"`
+	RegistrationID string `json:"registration_id" binding:"required"`
+	Message        string `json:"message"`
 }
 
 type PendingRegistration struct {
@@ -18,4 +19,13 @@ type PendingRegistration struct {
 	PasswordHash string    `json:"password_hash"`
 	OTPHash      string    `json:"otp_hash"`
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+type VerifyRegisterRequest struct {
+	RegistrationID string `json:"registration_id" binding:"required"`
+	OTP            string `json:"otp" binding:"required"`
+}
+
+type VerifyRegisterResponse struct {
+	Message string `json:"message"`
 }
