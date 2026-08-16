@@ -29,3 +29,15 @@ type VerifyRegisterRequest struct {
 type VerifyRegisterResponse struct {
 	Message string `json:"message"`
 }
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8,max=20"`
+}
+
+type LoginResponse struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	TokenType    string    `json:"token_type"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}

@@ -1,5 +1,9 @@
 APP_NAME := production-go-api
 
+# ============================================================
+# Database
+# ============================================================
+
 DB_CONTAINER := production-go-postgres
 
 DB_HOST := localhost
@@ -8,11 +12,18 @@ DB_USER := production
 DB_PASSWORD := production
 DB_NAME := production_api
 
+TEST_DB_NAME := production_api_test
+
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-# -----------------------
-# Docker Database
-# -----------------------
+TEST_DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(TEST_DB_NAME)?sslmode=disable
+
+MIGRATIONS := migrations
+
+
+# ============================================================
+# Docker
+# ============================================================
 
 .PHONY: docker-up
 docker-up:
@@ -38,29 +49,30 @@ docker-logs:
 docker-ps:
 	docker compose ps
 
-# ===========
-# Db shell
-# =========
+
+# ============================================================
+# Development Database
+# ============================================================
 
 .PHONY: db-shell
 db-shell:
 	docker exec -it $(DB_CONTAINER) psql \
-	-U $(DB_USER) \
-	-d $(DB_NAME)
+		-U $(DB_USER) \
+		-d $(DB_NAME)
 
 .PHONY: db-tables
 db-tables:
 	docker exec -it $(DB_CONTAINER) psql \
-	-U $(DB_USER) \
-	-d $(DB_NAME) \
-	-c "\dt"
+		-U $(DB_USER) \
+		-d $(DB_NAME) \
+		-c "\dt"
 
 .PHONY: db-drop-all
 db-drop-all:
 	docker exec -it $(DB_CONTAINER) psql \
-	-U $(DB_USER) \
-	-d $(DB_NAME) \
-	-c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+		-U $(DB_USER) \
+		-d $(DB_NAME) \
+		-c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 .PHONY: db-reset
 db-reset:
@@ -68,69 +80,157 @@ db-reset:
 	docker compose up -d
 
 
-# -----------------------
-# Goose Migration
-# -----------------------
+# ============================================================
+# Development Database Migrations
+# ============================================================
 
 .PHONY: migrate-create
 migrate-create:
-	goose -dir migrations create $(name) sql
+	goose -dir $(MIGRATIONS) create $(name) sql
 
 .PHONY: migrate-up
 migrate-up:
-	goose -dir migrations postgres "$(DB_URL)" up
+	goose -dir $(MIGRATIONS) postgres "$(DB_URL)" up
 
 .PHONY: migrate-down
 migrate-down:
-	goose -dir migrations postgres "$(DB_URL)" down
+	goose -dir $(MIGRATIONS) postgres "$(DB_URL)" down
 
 .PHONY: migrate-status
 migrate-status:
-	goose -dir migrations postgres "$(DB_URL)" status
+	goose -dir $(MIGRATIONS) postgres "$(DB_URL)" status
 
 .PHONY: migrate-reset
 migrate-reset:
-	goose -dir migrations postgres "$(DB_URL)" reset
+	goose -dir $(MIGRATIONS) postgres "$(DB_URL)" reset
 
 
-# =========================
+# ============================================================
+# Test Database
+# ============================================================
+
+.PHONY: test-db-create
+test-db-create:
+	docker exec $(DB_CONTAINER) \
+		psql -U $(DB_USER) -d postgres \
+		-c "CREATE DATABASE $(TEST_DB_NAME);"
+
+.PHONY: test-db-drop
+test-db-drop:
+	docker exec $(DB_CONTAINER) \
+		psql -U $(DB_USER) -d postgres \
+		-c "DROP DATABASE IF EXISTS $(TEST_DB_NAME);"
+
+.PHONY: test-db-shell
+test-db-shell:
+	docker exec -it $(DB_CONTAINER) \
+		psql -U $(DB_USER) -d $(TEST_DB_NAME)
+
+.PHONY: test-db-tables
+test-db-tables:
+	docker exec $(DB_CONTAINER) \
+		psql -U $(DB_USER) -d $(TEST_DB_NAME) \
+		-c "\dt"
+
+
+# ============================================================
+# Test Database Migrations
+# ============================================================
+
+.PHONY: test-migrate-up
+test-migrate-up:
+	goose -dir $(MIGRATIONS) postgres "$(TEST_DB_URL)" up
+
+.PHONY: test-migrate-down
+test-migrate-down:
+	goose -dir $(MIGRATIONS) postgres "$(TEST_DB_URL)" down
+
+.PHONY: test-migrate-status
+test-migrate-status:
+	goose -dir $(MIGRATIONS) postgres "$(TEST_DB_URL)" status
+
+.PHONY: test-migrate-reset
+test-migrate-reset:
+	goose -dir $(MIGRATIONS) postgres "$(TEST_DB_URL)" reset
+
+
+# ============================================================
+# Tests
+# ============================================================
+
+.PHONY: test
+test:
+	go test ./...
+
+.PHONY: test-verbose
+test-verbose:
+	go test ./... -v
+
+.PHONY: test-unit
+test-unit:
+	go test ./internal/features/... -v
+
+.PHONY: test-integration
+test-integration:
+	go test ./internal/features/... -v
+
+.PHONY: test-coverage
+test-coverage:
+	go test ./... -cover
+
+.PHONY: test-race
+test-race:
+	go test ./... -race
+
+
+# ============================================================
 # Redis
-# =========================
+# ============================================================
 
+.PHONY: redis-up
 redis-up:
 	docker compose up -d redis
 
+.PHONY: redis-down
 redis-down:
 	docker compose stop redis
 
+.PHONY: redis-restart
 redis-restart:
 	docker compose restart redis
 
+.PHONY: redis-logs
 redis-logs:
 	docker compose logs -f redis
 
+.PHONY: redis-status
 redis-status:
 	docker compose ps redis
 
+.PHONY: redis-cli
 redis-cli:
 	docker exec -it production-redis redis-cli
 
+.PHONY: redis-ping
 redis-ping:
 	docker exec production-redis redis-cli PING
 
+.PHONY: redis-flush
 redis-flush:
 	docker exec production-redis redis-cli FLUSHDB
 
+.PHONY: redis-keys
 redis-keys:
 	docker exec production-redis redis-cli KEYS '*'
 
+.PHONY: redis-info
 redis-info:
 	docker exec production-redis redis-cli INFO
 
 
-# -----------------------
+# ============================================================
 # Application
-# -----------------------
+# ============================================================
 
 .PHONY: run
 run:
@@ -140,10 +240,6 @@ run:
 build:
 	go build -o bin/api ./cmd/api
 
-.PHONY: test
-test:
-	go test ./...
-
 .PHONY: tidy
 tidy:
 	go mod tidy
@@ -151,3 +247,7 @@ tidy:
 .PHONY: fmt
 fmt:
 	go fmt ./...
+
+.PHONY: vet
+vet:
+	go vet ./...
