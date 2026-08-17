@@ -1,0 +1,71 @@
+package auth
+
+import (
+	"context"
+	"errors"
+
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
+	"gorm.io/gorm"
+)
+
+type AuthRepository interface {
+	Create(ctx context.Context, session *AuthSession) error
+	Update(ctx context.Context, session *AuthSession) error
+	GetByID(ctx context.Context, id uint) (*AuthSession, error)
+}
+
+type repository struct {
+	db *gorm.DB
+}
+
+func NewRepository(db *gorm.DB) AuthRepository {
+	return &repository{
+		db: db,
+	}
+}
+
+func (r *repository) Create(
+	ctx context.Context,
+	session *AuthSession,
+) error {
+
+	return r.db.WithContext(ctx).
+		Create(session).
+		Error
+}
+
+func (r *repository) Update(
+	ctx context.Context,
+	session *AuthSession,
+) error {
+
+	return r.db.WithContext(ctx).
+		Save(session).
+		Error
+}
+
+func (r *repository) GetByID(
+	ctx context.Context,
+	id uint,
+) (*AuthSession, error) {
+
+	var session AuthSession
+
+	err := r.db.WithContext(ctx).
+		First(&session, id).
+		Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperror.New(
+				apperror.CodeAuthSessionNotFound,
+				"authentication session not found",
+				err,
+			)
+		}
+
+		return nil, err
+	}
+
+	return &session, nil
+}

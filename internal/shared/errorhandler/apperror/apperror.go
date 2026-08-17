@@ -5,15 +5,17 @@ import "errors"
 type Code string
 
 const (
-	CodeUserNotFound       Code = "USER_NOT_FOUND"
-	CodeUserAlreadyExists  Code = "USER_ALREADY_EXISTS"
-	CodeInvalidCredentials Code = "INVALID_CREDENTIALS"
-	CodeEmailNotVerified   Code = "EMAIL_NOT_VERIFIED"
-	CodeInvalidVerifyCode  Code = "INVALID_VERIFICATION_CODE"
-	CodeVerifyCodeExpired  Code = "VERIFICATION_CODE_EXPIRED"
-	CodeMethodNotAllowed   Code = "METHOD_NOT_ALLOWED"
-	CodeRouteNotFound      Code = "ROUTE_NOT_FOUND"
-	CodeInvalidRequest  Code = "INVALID_REQUEST"
+	CodeUserNotFound        Code = "USER_NOT_FOUND"
+	CodeUserAlreadyExists   Code = "USER_ALREADY_EXISTS"
+	CodeInvalidCredentials  Code = "INVALID_CREDENTIALS"
+	CodeEmailNotVerified    Code = "EMAIL_NOT_VERIFIED"
+	CodeInvalidVerifyCode   Code = "INVALID_VERIFICATION_CODE"
+	CodeVerifyCodeExpired   Code = "VERIFICATION_CODE_EXPIRED"
+	CodeMethodNotAllowed    Code = "METHOD_NOT_ALLOWED"
+	CodeRouteNotFound       Code = "ROUTE_NOT_FOUND"
+	CodeInvalidRequest      Code = "INVALID_REQUEST"
+	CodeAuthSessionNotFound Code = "AUTH_SESSION_NOT_FOUND"
+	CodeAccountInactive    Code = "ACCOUNT_INACTIVE"
 )
 
 type Error struct {

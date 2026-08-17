@@ -80,6 +80,12 @@ db-reset:
 	docker compose up -d
 
 
+.PHONY: db-clear-data
+db-clear-data:
+	docker exec -it $(DB_CONTAINER) psql \
+		-U $(DB_USER) \
+		-d $(DB_NAME) \
+		-c "DO $$$$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP EXECUTE 'TRUNCATE TABLE public.' || quote_ident(r.tablename) || ' RESTART IDENTITY CASCADE'; END LOOP; END $$$$;"
 # ============================================================
 # Development Database Migrations
 # ============================================================

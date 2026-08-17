@@ -14,6 +14,7 @@ import (
 	redisinfra "github.com/khaingminhtun/production-go-api/internal/infrastructure/redis"
 	"github.com/khaingminhtun/production-go-api/internal/shared/email"
 	"github.com/khaingminhtun/production-go-api/internal/shared/logger"
+	"github.com/khaingminhtun/production-go-api/internal/shared/security"
 
 	"github.com/rs/zerolog/log"
 )
@@ -98,6 +99,16 @@ func main() {
 	log.Info().
 		Msg("email worker started")
 
+	// ===============
+	// jwt
+	// ==============
+
+	jwtManager := security.NewJWTManager(
+		cfg.JwtEnv.Secret,
+		cfg.JwtEnv.AccessExpiration,
+		cfg.JwtEnv.RefreshExpiration,
+	)
+
 	// ============================================================
 	// Dependency Injection
 	// ============================================================
@@ -106,7 +117,8 @@ func main() {
 		db,
 		redisStore,
 		emailQueue,
-		emailSender,
+
+		jwtManager,
 	)
 
 	// ============================================================

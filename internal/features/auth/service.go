@@ -25,23 +25,35 @@ type Service interface {
 		ctx context.Context,
 		req VerifyRegisterRequest,
 	) (*VerifyRegisterResponse, error)
+
+	Authenticate(
+		ctx context.Context,
+		req LoginRequest,
+		userAgent string,
+		ipAddress string) (*LoginResponse, error)
 }
 
 type service struct {
 	userRepo   user.Repository
+	authRepo   AuthRepository
 	redisStore redisinfra.RedisStore
 	emailQueue redisinfra.EmailQueue
+	jwtManager *security.JWTManager
 }
 
 func NewService(
 	userRepo user.Repository,
+	authRepo AuthRepository,
 	redisStore redisinfra.RedisStore,
 	emailQueue redisinfra.EmailQueue,
+	jwtManager *security.JWTManager,
 ) Service {
 	return &service{
 		userRepo:   userRepo,
+		authRepo:   authRepo,
 		redisStore: redisStore,
 		emailQueue: emailQueue,
+		jwtManager: jwtManager,
 	}
 }
 
@@ -302,4 +314,163 @@ func (s *service) VerifyRegister(
 		Message: "registration successful",
 	}, nil
 
+}
+
+func (s *service) Authenticate(
+	ctx context.Context,
+	req LoginRequest,
+	userAgent string,
+	ipAddress string,
+) (*LoginResponse, error) {
+
+	// ============================================================
+	// Normalize email
+	// ============================================================
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	// ============================================================
+	// Get user
+	// ============================================================
+
+	currentUser, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+
+		if apperror.Is(err, apperror.CodeUserNotFound) {
+			return nil, apperror.New(
+				apperror.CodeInvalidCredentials,
+				"invalid email or password",
+				nil,
+			)
+		}
+
+		return nil, err
+	}
+
+	// ============================================================
+	// Verify password
+	// ============================================================
+
+	if err := security.ComparePassword(
+		req.Password,
+		currentUser.PasswordHash,
+	); err != nil {
+		return nil, apperror.New(
+			apperror.CodeInvalidCredentials,
+			"invalid email or password",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Check account status
+	// ============================================================
+
+	if currentUser.Status != "active" {
+		return nil, apperror.New(
+			apperror.CodeAccountInactive,
+			"account is not active",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Check email verification
+	// ============================================================
+
+	if !currentUser.EmailVerified {
+		return nil, apperror.New(
+			apperror.CodeEmailNotVerified,
+			"email is not verified",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Create authentication session
+	// ============================================================
+
+	session := &AuthSession{
+		UserID:    currentUser.ID,
+		UserAgent: userAgent,
+		IPAddress: ipAddress,
+		ExpiresAt: time.Now().Add(
+			s.jwtManager.RefreshExpiration(),
+		),
+	}
+
+	if err := s.authRepo.Create(ctx, session); err != nil {
+		return nil, fmt.Errorf(
+			"create auth session: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Generate access token
+	// ============================================================
+
+	accessToken, err := s.jwtManager.GenerateAccessToken(
+		currentUser.ID,
+		currentUser.Role,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"generate access token: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Generate refresh token
+	// ============================================================
+
+	refreshToken, err := s.jwtManager.GenerateRefreshToken(
+		currentUser.ID,
+		session.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"generate refresh token: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Hash refresh token
+	// ============================================================
+
+	refreshTokenHash, err := security.HashToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"hash refresh token: %w",
+			err,
+		)
+	}
+
+	session.RefreshTokenHash = refreshTokenHash
+
+	// ============================================================
+	// Save refresh token hash
+	// ============================================================
+
+	if err := s.authRepo.Update(ctx, session); err != nil {
+		return nil, fmt.Errorf(
+			"update auth session: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Success
+	// ============================================================
+
+	return &LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresAt: time.Now().Add(
+			s.jwtManager.AccessExpiration(),
+		),
+	}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/khaingminhtun/production-go-api/internal/shared/response"
 )
 
 type Handler struct {
@@ -93,7 +94,51 @@ func (h *Handler) VerifyRegister(c *gin.Context) {
 	// Response
 	// ============================================================
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": result,
-	})
+	response.OK(c, result)
+}
+
+func (h *Handler) Authenticate(c *gin.Context) {
+	var req LoginRequest
+
+	// ========================================================
+	// Bind request
+	// ========================================================
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid login request",
+		})
+		return
+	}
+
+	// ========================================================
+	// Request metadata
+	// ========================================================
+
+	userAgent := c.GetHeader("User-Agent")
+	ipAddress := c.ClientIP()
+
+	// ========================================================
+	// Authenticate
+	// ========================================================
+
+	result, err := h.service.Authenticate(
+		c.Request.Context(),
+		req,
+		userAgent,
+		ipAddress,
+	)
+
+	if err != nil {
+		// Use your existing centralized error middleware.
+		c.Error(err)
+		return
+	}
+
+	// ========================================================
+	// Response
+	// ========================================================
+
+	response.OK(c, result)
 }

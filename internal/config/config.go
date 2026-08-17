@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -19,6 +20,8 @@ type Config struct {
 	Redis RedisConfig
 
 	SendGrid SendGridConfig
+
+	JwtEnv JWTConfig
 }
 
 type DatabaseConfig struct {
@@ -45,6 +48,12 @@ type SendGridConfig struct {
 	FromName string
 }
 
+type JWTConfig struct {
+	Secret            string
+	AccessExpiration  time.Duration
+	RefreshExpiration time.Duration
+}
+
 func Load() *Config {
 
 	err := godotenv.Load("configs/development.env")
@@ -66,6 +75,22 @@ func Load() *Config {
 	viper.SetDefault("REDIS_HOST", "localhost")
 	viper.SetDefault("REDIS_PORT", "6379")
 	viper.SetDefault("REDIS_DB", 0)
+
+	viper.SetDefault("JWT_SECRET", "default_secret_please_change_this")
+	viper.SetDefault("JWT_ACCESS_EXPIRATION", "15m")
+	viper.SetDefault("JWT_REFRESH_EXPIRATION", "720h")
+
+	accessExpiration, err := time.ParseDuration(viper.GetString("JWT_ACCESS_EXPIRATION"))
+	if err != nil {
+		log.Printf("Invalid JWT_ACCESS_EXPIRATION format. Falling back to 15m: %v", err)
+		accessExpiration = 15 * time.Minute
+	}
+
+	refreshExpiration, err := time.ParseDuration(viper.GetString("JWT_REFRESH_EXPIRATION"))
+	if err != nil {
+		log.Printf("Invalid JWT_REFRESH_EXPIRATION format. Falling back to 720h: %v", err)
+		refreshExpiration = 720 * time.Hour
+	}
 
 	return &Config{
 
@@ -106,6 +131,12 @@ func Load() *Config {
 			FromEmail: viper.GetString("SENDGRID_FROM_EMAIL"),
 
 			FromName: viper.GetString("SENDGRID_FROM_NAME"),
+		},
+
+		JwtEnv: JWTConfig{
+			Secret:            viper.GetString("JWT_SECRET"),
+			AccessExpiration:  accessExpiration,  // Injected time.Duration
+			RefreshExpiration: refreshExpiration, // Injected time.Duration
 		},
 	}
 
