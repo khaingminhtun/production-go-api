@@ -1,46 +1,49 @@
 package app
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+
 	"github.com/khaingminhtun/production-go-api/internal/features/auth"
 	"github.com/khaingminhtun/production-go-api/internal/features/user"
-	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
+	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/httperror"
 	"github.com/khaingminhtun/production-go-api/internal/shared/middleware"
 )
 
 func NewRouter(deps *Dependencies) *gin.Engine {
 	router := gin.New()
 
-	// 1. Force Gin routing framework to pass routing errors down into middleware
+	// Enable 405 Method Not Allowed handling.
 	router.HandleMethodNotAllowed = true
 
-	// 2. Load globally scoped core middlewares
+	// Global middleware.
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(middleware.ErrorHandler()) // Intercepts and parses every error below
+	router.Use(middleware.ErrorHandler())
 
-	// 3. Intercept Global Method Failures (405)
+	// 405 Method Not Allowed.
 	router.NoMethod(func(c *gin.Context) {
-		_ = c.Error(apperror.New(
-			apperror.CodeMethodNotAllowed,
+		_ = c.Error(httperror.New(
+			http.StatusMethodNotAllowed,
+			"METHOD_NOT_ALLOWED",
 			"the HTTP method used is not supported for this endpoint",
 			nil,
 		))
 	})
 
-	// 4. Intercept Broken Paths / Missing Routes (404)
+	// 404 Route Not Found.
 	router.NoRoute(func(c *gin.Context) {
-		_ = c.Error(apperror.New(
-			apperror.CodeRouteNotFound,
+		_ = c.Error(httperror.New(
+			http.StatusNotFound,
+			"ROUTE_NOT_FOUND",
 			"the requested API endpoint does not exist",
 			nil,
 		))
 	})
 
-	//API v1
 	api := router.Group("/api/v1")
 
-	//User module
 	user.RegisterRoutes(
 		api,
 		deps.UserHandler,
@@ -48,7 +51,8 @@ func NewRouter(deps *Dependencies) *gin.Engine {
 
 	auth.RegisterRoutes(
 		api,
-		deps.AuthHandler)
+		deps.AuthHandler,
+	)
 
 	return router
 }

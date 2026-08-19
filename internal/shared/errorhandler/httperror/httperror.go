@@ -74,6 +74,9 @@ var codeToStatus = map[apperror.Code]int{
 	apperror.CodeInvalidRequest:      http.StatusBadRequest,
 	apperror.CodeAuthSessionNotFound: http.StatusNotFound,
 	apperror.CodeAccountInactive:     http.StatusForbidden,
+	apperror.CodeAuthSessionExpired:  http.StatusUnauthorized,
+	apperror.CodeUserInactive:        http.StatusForbidden,
+	apperror.CodeAuthSessionRevoked:  http.StatusUnauthorized,
 }
 
 func fromAppError(err *apperror.Error) *Error {

@@ -31,6 +31,10 @@ type Service interface {
 		req LoginRequest,
 		userAgent string,
 		ipAddress string) (*LoginResponse, error)
+	Refresh(
+		ctx context.Context,
+		req RefreshRequest,
+	) (*RefreshResponse, error)
 }
 
 type service struct {
@@ -472,5 +476,170 @@ func (s *service) Authenticate(
 		ExpiresAt: time.Now().Add(
 			s.jwtManager.AccessExpiration(),
 		),
+	}, nil
+}
+
+func (s *service) Refresh(
+	ctx context.Context,
+	req RefreshRequest,
+) (*RefreshResponse, error) {
+
+	// ============================================================
+	// Validate refresh token
+	// ============================================================
+
+	refreshToken := strings.TrimSpace(req.RefreshToken)
+
+	if refreshToken == "" {
+		return nil, apperror.New(
+			apperror.CodeInvalidRefreshToken,
+			"refresh token is required",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Hash refresh token
+	// ============================================================
+
+	refreshTokenHash, err := security.HashToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("hashsing token error %w", err)
+	}
+
+	// ============================================================
+	// Find authentication session
+	// ============================================================
+
+	session, err := s.authRepo.GetByRefreshTokenHash(
+		ctx,
+		refreshTokenHash,
+	)
+
+	if err != nil {
+		return nil, apperror.New(
+			apperror.CodeInvalidRefreshToken,
+			"invalid refresh token",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Check session revoked
+	// ============================================================
+
+	if session.RevokedAt != nil {
+		return nil, apperror.New(
+			apperror.CodeAuthSessionRevoked,
+			"authentication session has been revoked",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Check session expiration
+	// ============================================================
+
+	if time.Now().After(session.ExpiresAt) {
+		return nil, apperror.New(
+			apperror.CodeAuthSessionExpired,
+			"authentication session has expired",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Get user
+	// ============================================================
+
+	currentUser, err := s.userRepo.GetByID(
+		ctx,
+		session.UserID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ============================================================
+	// Check user status
+	// ============================================================
+
+	if currentUser.Status != "active" {
+		return nil, apperror.New(
+			apperror.CodeUserInactive,
+			"user account is inactive",
+			nil,
+		)
+	}
+
+	// ============================================================
+	// Generate new access token
+	// ============================================================
+
+	accessToken, err := s.jwtManager.GenerateAccessToken(currentUser.ID, "user")
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"generate access token: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Generate new refresh token
+	// ============================================================
+
+	newRefreshToken, err := s.jwtManager.GenerateRefreshToken(currentUser.ID, session.ID)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"generate refresh token: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Hash new refresh token
+	// ============================================================
+
+	newRefreshTokenHash, err := security.HashToken(
+		newRefreshToken,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf(
+			"token hasing error: %W", err,
+		)
+	}
+
+	// ============================================================
+	// Rotate refresh token
+	// ============================================================
+
+	session.RefreshTokenHash = newRefreshTokenHash
+	session.ExpiresAt = time.Now().Add(
+		7 * 24 * time.Hour,
+	)
+
+	if err := s.authRepo.Update(
+		ctx,
+		session,
+	); err != nil {
+		return nil, fmt.Errorf(
+			"update authentication session: %w",
+			err,
+		)
+	}
+
+	// ============================================================
+	// Response
+	// ============================================================
+
+	return &RefreshResponse{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    15 * 60,
 	}, nil
 }

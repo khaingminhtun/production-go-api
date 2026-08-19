@@ -142,3 +142,25 @@ func (h *Handler) Authenticate(c *gin.Context) {
 
 	response.OK(c, result)
 }
+
+func (h *Handler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid login request",
+		})
+		return
+	}
+	result, err := h.service.Refresh(
+		c.Request.Context(),
+		req,
+	)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response.OK(c, result)
+}

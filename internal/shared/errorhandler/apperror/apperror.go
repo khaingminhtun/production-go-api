@@ -11,11 +11,13 @@ const (
 	CodeEmailNotVerified    Code = "EMAIL_NOT_VERIFIED"
 	CodeInvalidVerifyCode   Code = "INVALID_VERIFICATION_CODE"
 	CodeVerifyCodeExpired   Code = "VERIFICATION_CODE_EXPIRED"
-	CodeMethodNotAllowed    Code = "METHOD_NOT_ALLOWED"
-	CodeRouteNotFound       Code = "ROUTE_NOT_FOUND"
 	CodeInvalidRequest      Code = "INVALID_REQUEST"
 	CodeAuthSessionNotFound Code = "AUTH_SESSION_NOT_FOUND"
-	CodeAccountInactive    Code = "ACCOUNT_INACTIVE"
+	CodeAccountInactive     Code = "ACCOUNT_INACTIVE"
+	CodeInvalidRefreshToken Code = "REFRESH_TOKEN_INVALID"
+	CodeAuthSessionExpired  Code = "AUTH_SESSION_EXPIRED"
+	CodeUserInactive        Code = "USER_INACTIVE"
+	CodeAuthSessionRevoked  Code = "AUTH_SESSION_REVOKED"
 )
 
 type Error struct {

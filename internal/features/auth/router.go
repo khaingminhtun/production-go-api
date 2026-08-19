@@ -13,5 +13,7 @@ func RegisterRoutes(
 
 	auth.POST("/register/verify", handler.VerifyRegister)
 
-	auth.POST("/login",handler.Authenticate)
+	auth.POST("/login", handler.Authenticate)
+
+	auth.POST("/refresh", handler.Refresh)
 }
