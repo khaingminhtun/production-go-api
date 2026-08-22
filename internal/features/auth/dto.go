@@ -9,7 +9,7 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	RegistrationID string `json:"registration_id" binding:"required"`
+	RegistrationID string `json:"registration_id"`
 	Message        string `json:"message"`
 }
 

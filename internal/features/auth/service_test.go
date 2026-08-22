@@ -22,29 +22,34 @@ type MockRegistrationUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockRegistrationUserRepository) Create(ctx context.Context, user *user.User) error {
-	//TODO implement me
-	panic("implement me")
+func (m *MockRegistrationUserRepository) Create(ctx context.Context, u *user.User) error {
+	args := m.Called(ctx, u)
+	return args.Error(0)
 }
 
 func (m *MockRegistrationUserRepository) GetByID(ctx context.Context, id uint) (*user.User, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, id)
+
+	var u *user.User
+	if args.Get(0) != nil {
+		u = args.Get(0).(*user.User)
+	}
+	return u, args.Error(1)
 }
 
 func (m *MockRegistrationUserRepository) List(ctx context.Context, offset, limit int) ([]user.User, int64, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, offset, limit)
+	return args.Get(0).([]user.User), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockRegistrationUserRepository) Update(ctx context.Context, user *user.User) error {
-	//TODO implement me
-	panic("implement me")
+func (m *MockRegistrationUserRepository) Update(ctx context.Context, u *user.User) error {
+	args := m.Called(ctx, u)
+	return args.Error(0)
 }
 
 func (m *MockRegistrationUserRepository) Delete(ctx context.Context, id uint) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
 func (m *MockRegistrationUserRepository) GetByEmail(
@@ -78,6 +83,44 @@ func (m *MockRegistrationUserRepository) GetByUsername(
 }
 
 // ============================================================
+// Mock Auth Repository
+// ============================================================
+
+type MockAuthRepository struct {
+	mock.Mock
+}
+
+func (m *MockAuthRepository) Create(ctx context.Context, session *AuthSession) error {
+	args := m.Called(ctx, session)
+	return args.Error(0)
+}
+
+func (m *MockAuthRepository) Update(ctx context.Context, session *AuthSession) error {
+	args := m.Called(ctx, session)
+	return args.Error(0)
+}
+
+func (m *MockAuthRepository) GetByID(ctx context.Context, id uint) (*AuthSession, error) {
+	args := m.Called(ctx, id)
+
+	var s *AuthSession
+	if args.Get(0) != nil {
+		s = args.Get(0).(*AuthSession)
+	}
+	return s, args.Error(1)
+}
+
+func (m *MockAuthRepository) GetByRefreshTokenHash(ctx context.Context, hash string) (*AuthSession, error) {
+	args := m.Called(ctx, hash)
+
+	var s *AuthSession
+	if args.Get(0) != nil {
+		s = args.Get(0).(*AuthSession)
+	}
+	return s, args.Error(1)
+}
+
+// ============================================================
 // Mock Redis Store
 // ============================================================
 
@@ -86,13 +129,13 @@ type MockRegistrationStore struct {
 }
 
 func (m *MockRegistrationStore) Get(ctx context.Context, key string) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
 }
 
 func (m *MockRegistrationStore) Exists(ctx context.Context, key string) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, key)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *MockRegistrationStore) Set(
@@ -124,18 +167,18 @@ type MockEmailPublisher struct {
 }
 
 func (m *MockEmailPublisher) Consume(ctx context.Context, consumerName string, count int, block time.Duration) ([]redisinfra.EmailJobMessage, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, consumerName, count, block)
+	return args.Get(0).([]redisinfra.EmailJobMessage), args.Error(1)
 }
 
 func (m *MockEmailPublisher) Ack(ctx context.Context, messageID string) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, messageID)
+	return args.Error(0)
 }
 
 func (m *MockEmailPublisher) EnsureConsumerGroup(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *MockEmailPublisher) Publish(
@@ -159,6 +202,18 @@ func userNotFoundError() error {
 	)
 }
 
+// newTestService builds a service wired with the given mocks.
+// authRepo and jwtManager can be nil for tests that only exercise
+// the Register flow (which does not use those dependencies).
+func newTestService(
+	userRepo user.Repository,
+	authRepo Repository,
+	redisStore redisinfra.RedisStore,
+	emailQueue redisinfra.EmailQueue,
+) Service {
+	return NewService(userRepo, authRepo, redisStore, emailQueue, nil)
+}
+
 // ============================================================
 // Register - Success
 // ============================================================
@@ -167,14 +222,11 @@ func TestService_Register_Success(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	// --------------------------------------------------------
 	// User email does not exist
@@ -274,14 +326,11 @@ func TestService_Register_EmailAlreadyExists(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	existingUser := &user.User{
 		ID:    1,
@@ -344,14 +393,11 @@ func TestService_Register_UsernameAlreadyExists(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	// Email does not exist.
 	userRepo.
@@ -428,14 +474,11 @@ func TestService_Register_GetByEmailError(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	repoErr := errors.New("database connection failed")
 
@@ -487,14 +530,11 @@ func TestService_Register_GetByUsernameError(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	repoErr := errors.New("database connection failed")
 
@@ -559,14 +599,11 @@ func TestService_Register_RedisSetError(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	// Email does not exist.
 	userRepo.
@@ -638,14 +675,11 @@ func TestService_Register_EmailQueueError(t *testing.T) {
 	ctx := context.Background()
 
 	userRepo := new(MockRegistrationUserRepository)
+	authRepo := new(MockAuthRepository)
 	redisStore := new(MockRegistrationStore)
 	emailQueue := new(MockEmailPublisher)
 
-	svc := NewService(
-		userRepo,
-		redisStore,
-		emailQueue,
-	)
+	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	// Email does not exist.
 	userRepo.

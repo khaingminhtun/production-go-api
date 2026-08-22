@@ -12,8 +12,8 @@ type User struct {
 	Username     string `gorm:"size:100;not null"`
 	PasswordHash string `gorm:"not null"`
 
-	Role          string `gorm:"size:20;not null;default:'user'"`
-	Status        string `gorm:"size:20;not null;default:'active'"`
+	Role          Role   `gorm:"size:20;not null;default:'user'"`
+	Status        Status `gorm:"size:20;not null;default:'active'"`
 	EmailVerified bool   `gorm:"not null;default:false"`
 
 	LastLoginAt *time.Time

@@ -18,7 +18,7 @@ type ErrorInfo struct {
 	Message string `json:"message"`
 }
 
-// OK sends a successful response.
+// OK sends a 200 OK response with data.
 func OK(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, Response{
 		Success: true,
@@ -26,7 +26,7 @@ func OK(c *gin.Context, data interface{}) {
 	})
 }
 
-// Created sends a 201 Created response.
+// Created sends a 201 Created response with data.
 func Created(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusCreated, Response{
 		Success: true,
@@ -34,15 +34,19 @@ func Created(c *gin.Context, data interface{}) {
 	})
 }
 
-// NoContent sends a 204 No Content response.
-func NoContent(c *gin.Context, message string) {
-	c.JSON(http.StatusNoContent, Response{
-		Success: false,
-		Error: &ErrorInfo{
-			Code:    "UNAUTHORIZED",
-			Message: message,
-		},
+// Accepted sends a 202 Accepted response with data.
+// Use this for async operations where work is queued but not yet complete.
+func Accepted(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusAccepted, Response{
+		Success: true,
+		Data:    data,
 	})
+}
+
+// NoContent sends a 204 No Content response.
+// Use this for successful DELETE or actions with no return value.
+func NoContent(c *gin.Context) {
+	c.Status(http.StatusNoContent)
 }
 
 // BadRequest sends a 400 Bad Request response.

@@ -69,8 +69,6 @@ var codeToStatus = map[apperror.Code]int{
 	apperror.CodeEmailNotVerified:    http.StatusForbidden,
 	apperror.CodeInvalidVerifyCode:   http.StatusBadRequest,
 	apperror.CodeVerifyCodeExpired:   http.StatusBadRequest,
-	apperror.CodeMethodNotAllowed:    http.StatusMethodNotAllowed,
-	apperror.CodeRouteNotFound:       http.StatusNotFound,
 	apperror.CodeInvalidRequest:      http.StatusBadRequest,
 	apperror.CodeAuthSessionNotFound: http.StatusNotFound,
 	apperror.CodeAccountInactive:     http.StatusForbidden,

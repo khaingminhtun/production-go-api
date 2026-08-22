@@ -20,8 +20,8 @@ type UserResponse struct {
 	ID            uint       `json:"id"`
 	Username      string     `json:"username"`
 	Email         string     `json:"email"`
-	Role          string     `json:"role"`
-	Status        string     `json:"status"`
+	Role          Role       `json:"role"`
+	Status        Status     `json:"status"`
 	EmailVerified bool       `json:"email_verified"`
 	LastLoginAt   *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`

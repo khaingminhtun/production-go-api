@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/khaingminhtun/production-go-api/internal/shared/response"
 )
@@ -30,9 +28,7 @@ func (h *Handler) Register(c *gin.Context) {
 	// ----------------------------------------------------------
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
-		})
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -56,9 +52,7 @@ func (h *Handler) Register(c *gin.Context) {
 	// Response
 	// ----------------------------------------------------------
 
-	c.JSON(http.StatusAccepted, gin.H{
-		"data": result,
-	})
+	response.Accepted(c, result)
 }
 
 func (h *Handler) VerifyRegister(c *gin.Context) {
@@ -70,9 +64,7 @@ func (h *Handler) VerifyRegister(c *gin.Context) {
 	// ============================================================
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
-		})
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 
@@ -105,10 +97,7 @@ func (h *Handler) Authenticate(c *gin.Context) {
 	// ========================================================
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid login request",
-		})
+		response.BadRequest(c, "invalid login request")
 		return
 	}
 
@@ -147,10 +136,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid login request",
-		})
+		response.BadRequest(c, "invalid request body")
 		return
 	}
 	result, err := h.service.Refresh(

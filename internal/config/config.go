@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -56,10 +57,13 @@ type JWTConfig struct {
 
 func Load() *Config {
 
-	err := godotenv.Load("configs/development.env")
+	envFile := os.Getenv("ENV_FILE")
+	if envFile == "" {
+		envFile = "configs/development.env"
+	}
 
-	if err != nil {
-		log.Println("Error loading .env file")
+	if err := godotenv.Load(envFile); err != nil {
+		log.Printf("env file not loaded (%s): %v", envFile, err)
 	}
 
 	viper.AutomaticEnv()

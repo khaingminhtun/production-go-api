@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthRepository interface {
+type Repository interface {
 	Create(ctx context.Context, session *AuthSession) error
 	Update(ctx context.Context, session *AuthSession) error
 	GetByID(ctx context.Context, id uint) (*AuthSession, error)
@@ -19,7 +19,7 @@ type repository struct {
 	db *gorm.DB
 }
 
-func NewRepository(db *gorm.DB) AuthRepository {
+func NewRepository(db *gorm.DB) Repository {
 	return &repository{
 		db: db,
 	}

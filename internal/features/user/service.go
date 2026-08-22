@@ -2,7 +2,10 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"github.com/khaingminhtun/production-go-api/internal/shared/security"
 )
 
 type Service interface {
@@ -52,12 +55,17 @@ func (s *service) CreateUser(
 	req CreateUserRequest,
 ) (*UserResponse, error) {
 
+	passwordHash, err := security.HashPassword(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("hash password: %w", err)
+	}
+
 	user := &User{
 		Email:         strings.ToLower(strings.TrimSpace(req.Email)),
 		Username:      strings.TrimSpace(req.Username),
-		PasswordHash:  req.Password, // Re-add password.Hash here later
-		Role:          "user",
-		Status:        "active",
+		PasswordHash:  passwordHash,
+		Role:          RoleUser,
+		Status:        StatusActive,
 		EmailVerified: false,
 	}
 

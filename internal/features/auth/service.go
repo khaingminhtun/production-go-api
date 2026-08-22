@@ -39,7 +39,7 @@ type Service interface {
 
 type service struct {
 	userRepo   user.Repository
-	authRepo   AuthRepository
+	authRepo   Repository
 	redisStore redisinfra.RedisStore
 	emailQueue redisinfra.EmailQueue
 	jwtManager *security.JWTManager
@@ -47,7 +47,7 @@ type service struct {
 
 func NewService(
 	userRepo user.Repository,
-	authRepo AuthRepository,
+	authRepo Repository,
 	redisStore redisinfra.RedisStore,
 	emailQueue redisinfra.EmailQueue,
 	jwtManager *security.JWTManager,
@@ -280,8 +280,8 @@ func (s *service) VerifyRegister(
 		Username:      pending.Username,
 		Email:         pending.Email,
 		PasswordHash:  pending.PasswordHash,
-		Role:          "user",
-		Status:        "active",
+		Role:          user.RoleUser,
+		Status:        user.StatusActive,
 		EmailVerified: true,
 	}
 
@@ -370,7 +370,7 @@ func (s *service) Authenticate(
 	// Check account status
 	// ============================================================
 
-	if currentUser.Status != "active" {
+	if currentUser.Status != user.StatusActive {
 		return nil, apperror.New(
 			apperror.CodeAccountInactive,
 			"account is not active",
@@ -416,7 +416,7 @@ func (s *service) Authenticate(
 
 	accessToken, err := s.jwtManager.GenerateAccessToken(
 		currentUser.ID,
-		currentUser.Role,
+		string(currentUser.Role),
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -504,7 +504,7 @@ func (s *service) Refresh(
 
 	refreshTokenHash, err := security.HashToken(refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("hashsing token error %w", err)
+		return nil, fmt.Errorf("hash refresh token: %w", err)
 	}
 
 	// ============================================================
@@ -565,7 +565,7 @@ func (s *service) Refresh(
 	// Check user status
 	// ============================================================
 
-	if currentUser.Status != "active" {
+	if currentUser.Status != user.StatusActive {
 		return nil, apperror.New(
 			apperror.CodeUserInactive,
 			"user account is inactive",
@@ -577,7 +577,7 @@ func (s *service) Refresh(
 	// Generate new access token
 	// ============================================================
 
-	accessToken, err := s.jwtManager.GenerateAccessToken(currentUser.ID, "user")
+	accessToken, err := s.jwtManager.GenerateAccessToken(currentUser.ID, string(currentUser.Role))
 
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -609,7 +609,7 @@ func (s *service) Refresh(
 
 	if err != nil {
 		return nil, fmt.Errorf(
-			"token hasing error: %W", err,
+			"hash new refresh token: %w", err,
 		)
 	}
 
@@ -619,7 +619,7 @@ func (s *service) Refresh(
 
 	session.RefreshTokenHash = newRefreshTokenHash
 	session.ExpiresAt = time.Now().Add(
-		7 * 24 * time.Hour,
+		s.jwtManager.RefreshExpiration(),
 	)
 
 	if err := s.authRepo.Update(
