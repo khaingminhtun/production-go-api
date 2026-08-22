@@ -3,11 +3,13 @@ package user
 import (
 	"time"
 
-	"gorm.io/gorm"
+	dbutils "github.com/khaingminhtun/production-go-api/internal/shared/dbutils"
 )
 
+// User has soft delete (DeletedAt) → embed SoftDeleteModel.
 type User struct {
-	ID           uint   `gorm:"primaryKey"`
+	dbutils.SoftDeleteModel
+
 	Email        string `gorm:"size:255;uniqueIndex;not null"`
 	Username     string `gorm:"size:100;not null"`
 	PasswordHash string `gorm:"not null"`
@@ -17,8 +19,4 @@ type User struct {
 	EmailVerified bool   `gorm:"not null;default:false"`
 
 	LastLoginAt *time.Time
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
 }

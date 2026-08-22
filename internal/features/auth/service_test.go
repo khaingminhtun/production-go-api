@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbutils "github.com/khaingminhtun/production-go-api/internal/shared/dbutils"
 	"github.com/khaingminhtun/production-go-api/internal/features/user"
 	redisinfra "github.com/khaingminhtun/production-go-api/internal/infrastructure/redis"
 	"github.com/khaingminhtun/production-go-api/internal/shared/errorhandler/apperror"
@@ -333,7 +334,9 @@ func TestService_Register_EmailAlreadyExists(t *testing.T) {
 	svc := newTestService(userRepo, authRepo, redisStore, emailQueue)
 
 	existingUser := &user.User{
-		ID:    1,
+		SoftDeleteModel: dbutils.SoftDeleteModel{
+			BaseModel: dbutils.BaseModel{ID: 1},
+		},
 		Email: "test@example.com",
 	}
 
@@ -420,7 +423,9 @@ func TestService_Register_UsernameAlreadyExists(t *testing.T) {
 		).
 		Return(
 			&user.User{
-				ID:       1,
+				SoftDeleteModel: dbutils.SoftDeleteModel{
+					BaseModel: dbutils.BaseModel{ID: 1},
+				},
 				Username: "john",
 			},
 			nil,
